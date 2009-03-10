@@ -31,10 +31,9 @@ THE SOFTWARE.
 #import "CTFUtilities.h"
 #import "CTFWhitelist.h"
 #import "NSBezierPath-RoundedRectangle.h"
-
+#import <Sparkle/Sparkle.h>
 
 #define LOGGING_ENABLED 0
-
 
     // MIME types
 static NSString *sFlashOldMIMEType = @"application/x-shockwave-flash";
@@ -86,8 +85,17 @@ static NSString *sAutoLoadInvisibleFlashViewsKey = @"ClickToFlash_autoLoadInvisi
 {
     self = [super init];
     if (self) {
-		// get defaults
-		NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+        {
+            static BOOL checkedForUpdate = NO;
+            if (!checkedForUpdate) {
+                checkedForUpdate = YES; NSBundle *clickToFlashBundle = [NSBundle bundleWithIdentifier:@"com.github.rentzsch.clicktoflash"];
+                NSAssert(clickToFlashBundle, nil);
+                SUUpdater *updater = [SUUpdater updaterForBundle:clickToFlashBundle];
+                NSAssert(updater, nil);
+                [updater setAutomaticallyChecksForUpdates:YES];
+                [updater resetUpdateCycle];
+            }
+        }
 		
 		self.webView = [[[arguments objectForKey:WebPlugInContainerKey] webFrame] webView];
 		
@@ -109,6 +117,20 @@ static NSString *sAutoLoadInvisibleFlashViewsKey = @"ClickToFlash_autoLoadInvisi
             }
         }
 
+		// Check the SWF src URL itself against the whitelist (allows embbeded videos from whitelisted sites to play, e.g. YouTube)
+		
+		if( !loadFromWhiteList )
+		{
+            NSString *srcAttribute = [[arguments objectForKey:WebPlugInAttributesKey] objectForKey:@"src"];
+            if (srcAttribute) {
+                NSURL* swfSrc = [NSURL URLWithString:srcAttribute];
+                
+                if( [self _isWhiteListedForHostString:[swfSrc host] ] )
+                {
+                    loadFromWhiteList = true;
+                }
+            }
+		}
         
         // Check for sIFR
         
@@ -133,7 +155,7 @@ static NSString *sAutoLoadInvisibleFlashViewsKey = @"ClickToFlash_autoLoadInvisi
 #endif
         
         _fromYouTube = [self.host isEqualToString:@"www.youtube.com"]
-                    || [flashvars rangeOfString: @"www.youtube.com"].location != NSNotFound;
+                    || ( flashvars != nil && [flashvars rangeOfString: @"www.youtube.com"].location != NSNotFound );
         
         // Handle if this is loading from whitelist
         
@@ -162,7 +184,6 @@ static NSString *sAutoLoadInvisibleFlashViewsKey = @"ClickToFlash_autoLoadInvisi
         }
 		
 		// send a notification so that all flash objects can be tracked
-		
 		if ( [ [ NSUserDefaults standardUserDefaults ] boolForKey: sAutoLoadInvisibleFlashViewsKey ]
 				&& [ self isConsideredInvisible ] ) {
 			// auto-loading is on and this view meets the size constraints
@@ -176,7 +197,7 @@ static NSString *sAutoLoadInvisibleFlashViewsKey = @"ClickToFlash_autoLoadInvisi
         
         NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
         
-            // Observe for additions to the whitelist:
+        // Observe for additions to the whitelist:
         [self _addWhitelistObserver];
 		
 		[center addObserver: self 
@@ -208,6 +229,7 @@ static NSString *sAutoLoadInvisibleFlashViewsKey = @"ClickToFlash_autoLoadInvisi
     self.container = nil;
     self.host = nil;
 	self.webView = nil;
+	self.baseURL = nil;
     
     [_flashVars release];
     [_badgeText release];
@@ -280,10 +302,8 @@ static NSString *sAutoLoadInvisibleFlashViewsKey = @"ClickToFlash_autoLoadInvisi
 
 - (BOOL) isConsideredInvisible
 {
-	DOMElement* clonedElement = (DOMElement*) [ self.container cloneNode: NO ];
-	
-	int height = [[clonedElement getAttribute:@"height"] intValue];
-	int width = [[clonedElement getAttribute:@"width"] intValue];
+	int height = (int)([self webView].frame.size.height);
+	int width = (int)([self webView].frame.size.width);
 	
 	return (height <= maxInvisibleDimension) && (width <= maxInvisibleDimension);
 }
