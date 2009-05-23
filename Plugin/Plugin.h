@@ -28,13 +28,11 @@ THE SOFTWARE.
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
 
-@class SUUpdater;
-
 @interface CTFClickToFlashPlugin : NSView <WebPlugInViewFactory> {
     DOMElement *_container;
     NSString *_host;
     NSDictionary* _flashVars;
-    NSTrackingArea *trackingArea;
+    id trackingArea;
     NSAlert* _activeAlert;
     NSString* _badgeText;
     BOOL mouseIsDown;
@@ -45,22 +43,40 @@ THE SOFTWARE.
 	NSUInteger _sifrVersion;
 	NSString *_baseURL;
 	NSDictionary *_attributes;
-    SUUpdater *_updater;
+	NSDictionary *_originalOpacityAttributes;
+	NSString *_src;
+	NSString *_videoId;
+	NSString *_launchedAppBundleIdentifier;
 }
 
 + (NSView *)plugInViewWithArguments:(NSDictionary *)arguments;
 
 - (id) initWithArguments:(NSDictionary *)arguments;
 
-@property (nonatomic, retain) DOMElement *container;
-@property (nonatomic, retain) NSString *host;
-@property (nonatomic, retain) WebView *webView;
-@property (retain) NSString *baseURL;
-@property (nonatomic, retain) NSDictionary *attributes;
+- (DOMElement *)container;
+- (void)setContainer:(DOMElement *)newValue;
+- (NSString *)host;
+- (void)setHost:(NSString *)newValue;
+- (WebView *)webView;
+- (void)setWebView:(WebView *)newValue;
+- (NSString *)baseURL;
+- (void)setBaseURL:(NSString *)newValue;
+- (NSDictionary *)attributes;
+- (void)setAttributes:(NSDictionary *)newValue;
+- (NSDictionary *)originalOpacityAttributes;
+- (void)setOriginalOpacityAttributes:(NSDictionary *)newValue;
+- (NSString *)src;
+- (void)setSrc:(NSString *)newValue;
+- (NSString *)videoId;
+- (void)setVideoId:(NSString *)newValue;
+- (NSString *)launchedAppBundleIdentifier;
+- (void)setLaunchedAppBundleIdentifier:(NSString *)newValue;
 
 - (IBAction)loadFlash:(id)sender;
 - (IBAction)loadH264:(id)sender;
 - (IBAction)loadAllOnPage:(id)sender;
+
+- (IBAction)downloadH264:(id)sender;
 
 - (BOOL) isConsideredInvisible;
 
